@@ -1,0 +1,305 @@
+<html>
+
+<head>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(8, 50px);
+      grid-template-rows: repeat(8, 50px);
+      grid-gap: 0;
+    }
+
+    .square {
+      width: 50px;
+      height: 50px;
+      border: 1px solid black;
+    }
+
+    .white {
+      background-color: rgb(238, 238, 210);
+    }
+
+    .black {
+      background-color: rgb(118, 150, 86);
+    }
+
+    .whitepiece {
+      color: white;
+      /* Fill color */
+      text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+      /* Add black border */
+    }
+
+    .blackpiece {
+      color: black;
+      /* Fill color */
+      text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;
+      /* Add black border */
+    }
+
+    .icon {
+      width: 100%;
+      height: 100%;
+      cursor: move;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 32px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="board">
+    <!-- The 64 squares will be added by JavaScript -->
+  </div>
+  <div id="coordinates"></div>
+  <script>
+    let boardState = {
+      whitesTurn: true, pieces: [
+        { row: 1, col: 1, white: true, type: 'rook' },
+        { row: 1, col: 8, white: true, type: 'rook' },
+        { row: 8, col: 1, white: false, type: 'rook' },
+        { row: 8, col: 8, white: false, type: 'rook' },
+        { row: 1, col: 2, white: true, type: 'knight' },
+        { row: 1, col: 7, white: true, type: 'knight' },
+        { row: 8, col: 2, white: false, type: 'knight' },
+        { row: 8, col: 7, white: false, type: 'knight' },
+        { row: 1, col: 3, white: true, type: 'bishop' },
+        { row: 1, col: 6, white: true, type: 'bishop' },
+        { row: 8, col: 3, white: false, type: 'bishop' },
+        { row: 8, col: 6, white: false, type: 'bishop' },
+        { row: 1, col: 4, white: true, type: 'king' },
+        { row: 1, col: 5, white: true, type: 'queen' },
+        { row: 8, col: 4, white: false, type: 'king' },
+        { row: 8, col: 5, white: false, type: 'queen' },
+        { row: 2, col: 1, white: true, type: 'pawn' },
+        { row: 2, col: 8, white: true, type: 'pawn' },
+        { row: 7, col: 1, white: false, type: 'pawn' },
+        { row: 7, col: 8, white: false, type: 'pawn' },
+        { row: 2, col: 2, white: true, type: 'pawn' },
+        { row: 2, col: 7, white: true, type: 'pawn' },
+        { row: 7, col: 2, white: false, type: 'pawn' },
+        { row: 7, col: 7, white: false, type: 'pawn' },
+        { row: 2, col: 3, white: true, type: 'pawn' },
+        { row: 2, col: 6, white: true, type: 'pawn' },
+        { row: 7, col: 3, white: false, type: 'pawn' },
+        { row: 7, col: 6, white: false, type: 'pawn' },
+        { row: 2, col: 4, white: true, type: 'pawn' },
+        { row: 2, col: 5, white: true, type: 'pawn' },
+        { row: 7, col: 4, white: false, type: 'pawn' },
+        { row: 7, col: 5, white: false, type: 'pawn' }
+      ]
+    };
+
+    const characterForPiece = {
+      'rook': '\u265C',
+      'knight': '\u265E',
+      'bishop': '\u265D',
+      'king': '\u265A',
+      'queen': '\u265B',
+      'pawn': '\u265F'
+    }
+    function isEmpty(row, col) {
+      piece = boardState.pieces.find((piece) => (piece.row == row) && (piece.col == col))
+      return piece === undefined
+    }
+
+    function isIntermediateSquaresEmpty(srow, scol, erow, ecol) { 
+      rowIncrement=Math.sign(erow-srow)
+      colIncrement=Math.sign(ecol-scol)
+      row=srow
+      col=scol
+      while (true){
+        row+=rowIncrement
+        col+=colIncrement
+        if ((row==erow) && (col==ecol)){
+          return true
+        }
+        if (!isEmpty(row,col)){
+          return false
+        }
+      }
+    }
+
+    function isLegalMove(startRow, startCol, endRow, endCol) {
+      movedPiece = boardState.pieces.find((piece) => (piece.row == startRow) && (piece.col == startCol))
+      capturedPiece = boardState.pieces.find((piece) => (piece.row == endRow) && (piece.col == endCol))
+      // Normalise the row coordinates so that row 1 is always the home row and
+      // row 8 is where pawns get promoted.
+      function flipBoardForBlack(row) {
+        if (!movedPiece.white) {
+          return 9 - row
+        } else {
+          return row
+        }
+      }
+      // First we check that the right side moved.
+      if (boardState.whitesTurn != movedPiece.white) return false
+      // If we captured a piece, it better not be our own piece.
+      if ((capturedPiece !== undefined) && (capturedPiece.white == movedPiece.white)) return false
+      rowMoveSize = endRow - startRow
+      colMoveSize = endCol - startCol
+      switch (movedPiece.type) {
+
+        case 'pawn':
+          startRow = flipBoardForBlack(startRow)
+          endRow = flipBoardForBlack(endRow)
+          rowMoveSize = endRow - startRow
+          //If a pawn does not capture
+          if (capturedPiece === undefined) {
+            //it must stay in the same column
+            if (startCol != endCol) {
+              return false
+            }
+            //If it moved two rows
+            if (rowMoveSize == 2) {
+              //It should have started from its starting position
+              if (startRow != 2) return false
+              //And it cannot do it if there is something in the way
+              if (!isEmpty(flipBoardForBlack(startRow + 1), startCol)) {
+                return false
+              }
+            } else if (rowMoveSize != 1) return false
+          } else {//If it did capture a piece 
+            if ((rowMoveSize != 1) || (Math.abs(colMoveSize) != 1)) return false // It needs to have moved diagonally by a single square
+          }
+          startRow = flipBoardForBlack(startRow)
+          endRow = flipBoardForBlack(endRow)
+          rowMoveSize = endRow - startRow
+          break
+        case 'knight': if (!(((Math.abs(rowMoveSize) == 2) && (Math.abs(colMoveSize) == 1)) || ((Math.abs(rowMoveSize) == 1) && (Math.abs(colMoveSize) == 2)))) return false;
+          break
+        case 'king': //lets create the rules for the king now
+          if (Math.max(Math.abs(rowMoveSize),Math.abs(colMoveSize)) > 1) // The king can't move more than one block at a time.
+            return false
+          break
+        case 'queen': 
+          if (!((colMoveSize==0) || (rowMoveSize==0) || (Math.abs(rowMoveSize)==Math.abs(colMoveSize))))
+          return false
+          if (!isIntermediateSquaresEmpty(startRow,startCol,endRow,endCol))
+          return false
+          break
+        case 'bishop': 
+          if (!((Math.abs(rowMoveSize)==Math.abs(colMoveSize))))
+          return false
+          if (!isIntermediateSquaresEmpty(startRow,startCol,endRow,endCol))
+          return false
+          break
+        case 'rook': 
+          if (!((colMoveSize==0) || (rowMoveSize==0)))
+          return false
+          if (!isIntermediateSquaresEmpty(startRow,startCol,endRow,endCol))
+          return false
+          break
+      }
+
+      return true
+    }
+
+
+    function doMove(startRow, startCol, endRow, endCol) {
+      // Here we will in future check if the move is legal.
+      if (isLegalMove(startRow, startCol, endRow, endCol)) {
+        console.log(`Piece at (${startRow},${startCol}) moved to (${endRow},${endCol})`)
+        boardState.pieces = boardState.pieces.filter((piece) => { return (piece.row != endRow) || (piece.col != endCol) })
+        boardState.pieces = boardState.pieces.map((piece) => { return ((piece.row == startRow) && (piece.col == startCol)) ? { ...piece, row: endRow, col: endCol } : piece })
+        boardState.whitesTurn = !boardState.whitesTurn
+        console.log(boardState)
+      }
+      render(boardState)
+    }
+    function render(boardState) {
+  $('.icon').remove();
+  for (const piece of boardState.pieces) {
+    // Create the draggable icon
+    const icon = $('<div>', { class: 'icon' });
+    icon.text(characterForPiece[piece.type]); // Unicode character for the rook symbol
+    icon.addClass(piece.white ? 'whitepiece' : 'blackpiece')
+    const index = (piece.row - 1) * 8 + piece.col - 1; // Calculate the index of the target square
+    $('.square').eq(index).append(icon); // Append the icon to the target square
+    icon.draggable({
+      containment: '.board',
+      grid: [50, 50],
+      snap: '.square',
+      snapMode: 'inner',
+      snapTolerance: 25,
+      start: handleDragStart,
+      stop: handleDragStop,
+      touch: handleTouchDrag
+    });
+  }
+}
+
+function handleDragStart(event, ui) {
+  const startRow = Math.ceil((ui.helper.offset().top - $('.board').offset().top + 1) / 50);
+  const startCol = Math.ceil((ui.helper.offset().left - $('.board').offset().left + 1) / 50);
+  $(this).data('startRow', startRow);
+  $(this).data('startCol', startCol);
+}
+
+function handleDragStop(event, ui) {
+  const endRow = Math.ceil((ui.helper.offset().top - $('.board').offset().top + 1) / 50);
+  const endCol = Math.ceil((ui.helper.offset().left - $('.board').offset().left + 1) / 50);
+  const startRow = $(this).data('startRow');
+  const startCol = $(this).data('startCol');
+  if ((startRow != endRow) || (startCol != endCol)) {
+    doMove(startRow, startCol, endRow, endCol);
+  }
+}
+
+function handleTouchDrag(event, ui) {
+  console.log('touch event')
+  const touch = event.originalEvent.changedTouches[0];
+  const startRow = Math.ceil((touch.clientY - $('.board').offset().top + 1) / 50);
+  const startCol = Math.ceil((touch.clientX - $('.board').offset().left + 1) / 50);
+  $(this).data('startRow', startRow);
+  $(this).data('startCol', startCol);
+  $(this).draggable('option', 'revert', true); // Revert the icon if the touch is released outside the board
+  $(this).on('touchend', function (event) {
+    const touch = event.originalEvent.changedTouches[0];
+    const endRow = Math.ceil((touch.clientY - $('.board').offset().top + 1) / 50);
+    const endCol = Math.ceil((touch.clientX - $('.board').offset().left + 1) / 50);
+    const startRow = $(this).data('startRow');
+    const startCol = $(this).data('startCol');
+    if ((startRow != endRow) || (startCol != endCol)) {
+      doMove(startRow, startCol, endRow, endCol);
+    }
+  })
+}
+
+    $(document).ready(function () {
+      // Create the 8x8 checkerboard
+      let isBlack = false;
+      for (let i = 0; i < 64; i++) {
+        const square = $('<div>', { class: 'square' });
+        if (isBlack) {
+          square.addClass('black');
+        } else {
+          square.addClass('white');
+        }
+        $('.board').append(square);
+
+        if ((i + 1) % 8 === 0) {
+          isBlack = isBlack;
+        } else {
+          isBlack = !isBlack;
+        }
+      }
+      render(boardState);
+    });
+  </script>
+</body>
+
+</html>
