@@ -239,8 +239,7 @@
       snapMode: 'inner',
       snapTolerance: 25,
       start: handleDragStart,
-      stop: handleDragStop,
-      touch: handleTouchDrag
+      stop: handleDragStop
     });
   }
 }
@@ -260,26 +259,6 @@ function handleDragStop(event, ui) {
   if ((startRow != endRow) || (startCol != endCol)) {
     doMove(startRow, startCol, endRow, endCol);
   }
-}
-
-function handleTouchDrag(event, ui) {
-  console.log('touch event')
-  const touch = event.originalEvent.changedTouches[0];
-  const startRow = Math.ceil((touch.clientY - $('.board').offset().top + 1) / 50);
-  const startCol = Math.ceil((touch.clientX - $('.board').offset().left + 1) / 50);
-  $(this).data('startRow', startRow);
-  $(this).data('startCol', startCol);
-  $(this).draggable('option', 'revert', true); // Revert the icon if the touch is released outside the board
-  $(this).on('touchend', function (event) {
-    const touch = event.originalEvent.changedTouches[0];
-    const endRow = Math.ceil((touch.clientY - $('.board').offset().top + 1) / 50);
-    const endCol = Math.ceil((touch.clientX - $('.board').offset().left + 1) / 50);
-    const startRow = $(this).data('startRow');
-    const startCol = $(this).data('startCol');
-    if ((startRow != endRow) || (startCol != endCol)) {
-      doMove(startRow, startCol, endRow, endCol);
-    }
-  })
 }
 
     $(document).ready(function () {
