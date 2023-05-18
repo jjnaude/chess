@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Stockfish Example</title>
+    </head>
+    <body>
+        <script type="text/javascript">
+            var stockfish = new Worker('js/stockfish.min.js');
+
+            stockfish.onmessage = function (event) {
+                // NOTE: 'bestmove' will be in the form of 'bestmove e2e4'
+                if(event.data.startsWith('bestmove')) {
+                    var bestMove = event.data.split(' ')[1];  // this will be the move, e.g., 'e2e4'
+                    console.log('Best move: ' + bestMove);
+                }
+            };
+            
+            // Set the position
+            var fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+            stockfish.postMessage('position fen ' + fen);
+            
+            // Ask for the best move
+            stockfish.postMessage('go depth 10');
+        </script>
+    </body>
+</html>
